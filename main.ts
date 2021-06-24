@@ -1,15 +1,9 @@
 import { Construct } from "constructs";
-import { App, TerraformOutput, TerraformStack } from "cdktf";
+import { App, TerraformStack, TerraformOutput } from "cdktf";
 import {
   AwsProvider,
-  Eip,
-  InternetGateway,
-  NatGateway,
-  Route,
-  RouteTable,
-  RouteTableAssociation,
-  Subnet,
-  Vpc,
+  vpc,
+  ec2
 } from "./.gen/providers/aws/";
 
 class MyStack extends TerraformStack {
@@ -21,7 +15,7 @@ class MyStack extends TerraformStack {
     });
 
     // Create VPC with Typescript and CKDTF
-    const newVpc = new Vpc(this, "VPC", {
+    const newVpc = new vpc.Vpc(this, "VPC", {
       cidrBlock: "10.0.0.0/16",
       tags: {
         Name: "CDKtf-TypeScript-Demo-VPC",
@@ -31,7 +25,7 @@ class MyStack extends TerraformStack {
     });
 
     // Create Two different Private subnets for assigning to the private network
-    const privateSubnetA = new Subnet(this, "Private-Subnet-A", {
+    const privateSubnetA = new vpc.Subnet(this, "Private-Subnet-A", {
       availabilityZone: "us-east-1a",
       vpcId: newVpc.id,
       mapPublicIpOnLaunch: false,
@@ -43,7 +37,7 @@ class MyStack extends TerraformStack {
       },
     });
 
-    const privateSubnetB = new Subnet(this, "Private-Subnet-B", {
+    const privateSubnetB = new vpc.Subnet(this, "Private-Subnet-B", {
       availabilityZone: "us-east-1b",
       vpcId: newVpc.id,
       mapPublicIpOnLaunch: false,
@@ -56,7 +50,7 @@ class MyStack extends TerraformStack {
     });
 
     // Create Two different Public subnets for assigning to the public network
-    const publicSubnetA = new Subnet(this, "Public-Subnet-A", {
+    const publicSubnetA = new vpc.Subnet(this, "Public-Subnet-A", {
       availabilityZone: "us-east-1a",
       vpcId: newVpc.id,
       mapPublicIpOnLaunch: true,
@@ -68,7 +62,7 @@ class MyStack extends TerraformStack {
       },
     });
 
-    const publicSubnetB = new Subnet(this, "Public-Subnet-B", {
+    const publicSubnetB = new vpc.Subnet(this, "Public-Subnet-B", {
       availabilityZone: "us-east-1b",
       vpcId: newVpc.id,
       mapPublicIpOnLaunch: true,
@@ -81,7 +75,7 @@ class MyStack extends TerraformStack {
     });
 
     // Create Internet Gateway For communication VPC and Internet
-    const internetGatway = new InternetGateway(this, "Internet-Gateway", {
+    const internetGatway = new vpc.InternetGateway(this, "Internet-Gateway", {
       vpcId: newVpc.id,
       tags: {
         Name: "CDKtf-TypeScript-Demo-IG",
@@ -91,7 +85,7 @@ class MyStack extends TerraformStack {
     });
 
     // Create Two different Public IPs for assigning to the public network
-    const publicipA = new Eip(this, "eip-A", {
+    const publicipA = new ec2.Eip(this, "eip-A", {
       vpc: true,
       tags: {
         Name: "CDKtf-TypeScript-Demo-Public-eip-A",
@@ -100,7 +94,7 @@ class MyStack extends TerraformStack {
       },
     });
 
-    const publicipB = new Eip(this, "eip-B", {
+    const publicipB = new ec2.Eip(this, "eip-B", {
       vpc: true,
       tags: {
         Name: "CDKtf-TypeScript-Demo-Public-eip-B",
@@ -110,7 +104,7 @@ class MyStack extends TerraformStack {
     });
 
     // Create Nat Gateway For communication Public and Private network
-    const natgatewayA = new NatGateway(this, "Nat-Gateway-A", {
+    const natgatewayA = new vpc.NatGateway(this, "Nat-Gateway-A", {
       allocationId: publicipA.id,
       subnetId: publicSubnetA.id,
       tags: {
@@ -120,7 +114,7 @@ class MyStack extends TerraformStack {
       },
     });
 
-    const natgatewayB = new NatGateway(this, "Nat-Gateway-B", {
+    const natgatewayB = new vpc.NatGateway(this, "Nat-Gateway-B", {
       allocationId: publicipB.id,
       subnetId: publicSubnetB.id,
       tags: {
@@ -131,7 +125,7 @@ class MyStack extends TerraformStack {
     });
 
     // Create Routing Table For communication Public network with Route and Association route
-    const publicroutetable = new RouteTable(this, "Public-Route-Table", {
+    const publicroutetable = new vpc.RouteTable(this, "Public-Route-Table", {
       vpcId: newVpc.id,
       tags: {
         Name: "CDKtf-TypeScript-Demo-Public-RT",
@@ -140,24 +134,24 @@ class MyStack extends TerraformStack {
       },
     });
 
-    new Route(this, "Route", {
+    new vpc.Route(this, "Route", {
       destinationCidrBlock: "0.0.0.0/0",
       routeTableId: publicroutetable.id,
       gatewayId: internetGatway.id,
     });
 
-    new RouteTableAssociation(this, "Route-Table-Association-PUB-SUB-A", {
+    new vpc.RouteTableAssociation(this, "Route-Table-Association-PUB-SUB-A", {
       routeTableId: publicroutetable.id,
       subnetId: publicSubnetA.id,
     });
 
-    new RouteTableAssociation(this, "Route-Table-Association-PUB-SUB-B", {
+    new vpc.RouteTableAssociation(this, "Route-Table-Association-PUB-SUB-B", {
       routeTableId: publicroutetable.id,
       subnetId: publicSubnetB.id,
     });
 
     // Create Routing Table For communication Private network with Route and Association route
-    const privateroutetableA = new RouteTable(this, "Private-Route-Table-A", {
+    const privateroutetableA = new vpc.RouteTable(this, "Private-Route-Table-A", {
       vpcId: newVpc.id,
       tags: {
         Name: "CDKtf-TypeScript-Demo-Private-RT-A",
@@ -166,18 +160,18 @@ class MyStack extends TerraformStack {
       },
     });
 
-    new Route(this, "Private-Route-A", {
+    new vpc.Route(this, "Private-Route-A", {
       destinationCidrBlock: "0.0.0.0/0",
       routeTableId: privateroutetableA.id,
       natGatewayId: natgatewayA.id,
     });
 
-    new RouteTableAssociation(this, "Route-Table-Association-Private-SUB-A", {
+    new vpc.RouteTableAssociation(this, "Route-Table-Association-Private-SUB-A", {
       routeTableId: privateroutetableA.id,
       subnetId: privateSubnetA.id,
     });
 
-    const privateroutetableB = new RouteTable(this, "Private-Route-Table-B", {
+    const privateroutetableB = new vpc.RouteTable(this, "Private-Route-Table-B", {
       vpcId: newVpc.id,
       tags: {
         Name: "CDKtf-TypeScript-Demo-private-RT-B",
@@ -186,13 +180,13 @@ class MyStack extends TerraformStack {
       },
     });
 
-    new Route(this, "Private-Route-B", {
+    new vpc.Route(this, "Private-Route-B", {
       destinationCidrBlock: "0.0.0.0/0",
       routeTableId: privateroutetableB.id,
       natGatewayId: natgatewayB.id,
     });
 
-    new RouteTableAssociation(this, "Route-Table-Association-Private-SUB-B", {
+    new vpc.RouteTableAssociation(this, "Route-Table-Association-Private-SUB-B", {
       routeTableId: privateroutetableB.id,
       subnetId: privateSubnetB.id,
     });
@@ -204,5 +198,5 @@ class MyStack extends TerraformStack {
 }
 
 const app = new App();
-new MyStack(app, "aws-kms");
+new MyStack(app, "cdktf-typescript-aws-vpc");
 app.synth();
